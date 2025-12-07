@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Sistema de Almoxarifado</title>
+<style>
+    body { font-family: Arial; background:#111; color:#fff; margin:0; }
+    header { background:#ff6600; padding:15px; text-align:center; font-size:24px; font-weight:bold; }
+    nav { display:flex; background:#222; }
+    nav button {
+        flex:1; padding:12px; background:#222; color:#fff;
+        border:1px solid #333; cursor:pointer; font-size:16px;
+    }
+    nav button:hover { background:#ff6600; }
+    .page { display:none; padding:20px; }
+    input, select {
+        padding:10px; width:100%; margin:8px 0;
+        background:#222; color:#fff; border:1px solid #555;
+    }
+    button.action {
+        padding:10px; background:#ff6600; color:#000;
+        border:none; font-size:16px; cursor:pointer; width:100%;
+        margin-top:10px;
+    }
+    table { width:100%; margin-top:20px; border-collapse:collapse; }
+    th, td {
+        padding:10px; border:1px solid #444; text-align:center;
+    }
+
+    /* POP-UP */
+    #popupFundo {
+        display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+        background:rgba(0,0,0,0.8); justify-content:center; align-items:center;
+    }
+    #popup {
+        background:#fff; padding:20px; width:90%; max-width:500px;
+        border-radius:10px; color:#000;
+    }
+    #signaturePad {
+        width:100%; height:250px; border:2px solid #ff6600; background:#fff;
+        touch-action:none;
+    }
+</style>
+</head>
+<body>
+
+<header>Sistema de Almoxarifado</header>
+
+<nav>
+    <button onclick="showPage('emprestimo')">Empréstimo</button>
+    <button onclick="showPage('devolucao')">Devolução</button>
+    <button onclick="showPage('almox')">Almoxarifado</button>
+    <button onclick="showPage('registros')">Registros</button>
+</nav>
+
+<div id="emprestimo" class="page">
+    <h2>Empréstimo de Ferramenta</h2>
+    <label>Nome da Pessoa</label>
+    <input id="nomePessoa">
+    <label>Nome da Ferramenta</label>
+    <input id="nomeFerramenta">
+    <label>Quantidade</label>
+    <input id="qtdEmp" type="number" min="1">
+    <label>Data</label>
+    <input id="dataEmp" type="date">
+    <button class="action" onclick="abrirPopup()">Assinar Digitalmente</button>
+    <button class="action" onclick="salvarEmprestimo()">Salvar Empréstimo</button>
+</div>
+
+<div id="popupFundo">
+    <div id="popup">
+        <h3>Assinatura Digital</h3>
+        <canvas id="signaturePad"></canvas>
+        <button class="action" onclick="limparAssinatura()">Limpar</button>
+        <button class="action" onclick="confirmarAssinatura()">Confirmar Assinatura</button>
+        <button class="action" onclick="fecharPopup()">Fechar</button>
+    </div>
+</div>
+
+<div id="devolucao" class="page">
+    <h2>Devolução</h2>
+    <label>Nome da Pessoa</label>
+    <input id="devolucaoPessoa">
+    <label>Nome da Ferramenta</label>
+    <input id="devolucaoFerramenta">
+    <label>Quantidade</label>
+    <input id="qtdDevolucao" type="number" min="1">
+    <button class="action" onclick="registrarDevolucao()">Registrar Devolução</button>
+</div>
+
+<div id="almox" class="page">
+    <h2>Almoxarifado</h2>
+    <label>Nome da ferramenta</label>
+    <input id="almoxNome">
+    <label>Quantidade</label>
+    <input id="almoxQtd" type="number">
+    <label>Categoria</label>
+    <select id="almoxCat">
+        <option value="manual">Manual</option>
+        <option value="eletrica">Elétrica</option>
+        <option value="hidraulica">Hidráulica</option>
+    </select>
+    <button class="action" onclick="adicionarFerramenta()">Adicionar</button>
+    <h3>Filtros</h3>
+    <label>Quantidade mínima</label>
+    <input type="number" id="filtroQtd">
+    <label>Categoria</label>
+    <select id="filtroCat">
+        <option value="todas">Todas</option>
+        <option value="manual">Manual</option>
+        <option value="eletrica">Elétrica</option>
+        <option value="hidraulica">Hidráulica</option>
+    </select>
+    <button class="action" onclick="ordenarAZ()">Ordenar A–Z</button>
+    <button class="action" onclick="filtrar()">Aplicar Filtro</button>
+    <button class="action" onclick="mostrarTudo()">Mostrar Tudo</button>
+    <button class="action" onclick="filtrarBaixa()">Baixa Quantidade</button>
+    <table>
+        <thead>
+            <tr><th>Ferramenta</th><th>Qtd</th><th>Categoria</th></tr>
+        </thead>
+        <tbody id="tabelaAlmox"></tbody>
+    </table>
+</div>
+
+<div id="registros" class="page">
+    <h2>Registros</h2>
+    <table>
+        <thead>
+            <tr><th>Pessoa</th><th>Ferramenta</th><th>Qtd</th><th>Data</th><th>Assinatura</th></tr>
+        </thead>
+        <tbody id="tabelaRegistros"></tbody>
+    </table>
+</div>
+
+<script>
+let ferramentas = [];
+let registros = [];
+let assinaturaOK = false;
+let assinaturaImg = "";
+
+function showPage(id) { document.querySelectorAll('.page').forEach(p => p.style.display = 'none'); document.getElementById(id).style.display = 'block'; }
+function abrirPopup() { document.getElementById("popupFundo").style.display = "flex"; }
+function fecharPopup() { document.getElementById("popupFundo").style.display = "none"; }
+
+// ASSINATURA DIGITAL
+let canvas = document.getElementById("signaturePad");
+let ctx = canvas.getContext("2d");
+let desenhando = false;
+let ultimoX = 0;
+let ultimoY = 0;
+
+function ajustarCanvas() {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "black";
+    ctx.lineCap = "round";
+}
+ajustarCanvas();
+
+canvas.addEventListener("mousedown", (e) => { desenhando = true; [ultimoX, ultimoY] = [e.offsetX, e.offsetY]; });
+canvas.addEventListener("mouseup", () => desenhando = false);
+canvas.addEventListener("mousemove", desenhar);
+canvas.addEventListener("touchstart", (e) => { desenhando = true; let rect = canvas.getBoundingClientRect(); [ultimoX, ultimoY] = [e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top]; });
+canvas.addEventListener("touchend", () => desenhando = false);
+canvas.addEventListener("touchmove", desenharTouch);
+
+function desenhar(e) {
+    if (!desenhando) return;
+    ctx.beginPath();
+    ctx.moveTo(ultimoX, ultimoY);
+    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.stroke();
+    [ultimoX, ultimoY] = [e.offsetX, e.offsetY];
+}
+
+function desenharTouch(e) {
+    if (!desenhando) return;
+    let rect = canvas.getBoundingClientRect();
+    let x = e.touches[0].clientX - rect.left;
+    let y = e.touches[0].clientY - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(ultimoX, ultimoY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    [ultimoX, ultimoY] = [x, y];
+}
+
+function limparAssinatura() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+function confirmarAssinatura() { assinaturaImg = canvas.toDataURL(); assinaturaOK = true; fecharPopup(); alert("Assinatura salva!"); }
+
+function salvarEmprestimo() {
+    let pessoa = document.getElementById("nomePessoa").value;
+    let ferramenta = document.getElementById("nomeFerramenta").value;
+    let qtd = parseInt(document.getElementById("qtdEmp").value) || 0;
+    let data = document.getElementById("dataEmp").value;
+    if (!data) data = new Date().toISOString().split('T')[0];
+    if (!pessoa || !ferramenta || qtd <= 0) { alert("Preencha todos os campos!"); return; }
+    if (!assinaturaOK) { alert("Você precisa assinar antes!"); return; }
+    let obj = ferramentas.find(f => f.nome.toLowerCase() === ferramenta.toLowerCase());
+    if (!obj) { alert("Ferramenta não está cadastrada no almoxarifado!"); return; }
+    if (obj.qtd < qtd) { alert("Quantidade insuficiente! Estoque atual: " + obj.qtd); return; }
+    obj.qtd -= qtd; atualizarTabela(ferramentas);
+    registros.push({ pessoa, ferramenta, qtd, data, assinatura: assinaturaImg });
+    atualizarRegistros(); limparAssinatura(); assinaturaOK = false;
+    alert("Empréstimo salvo com sucesso!");
+}
+
+function registrarDevolucao() {
+    let pessoa = document.getElementById("devolucaoPessoa").value;
+    let ferramenta = document.getElementById("devolucaoFerramenta").value;
+    let qtd = parseInt(document.getElementById("qtdDevolucao").value) || 0;
+    alert("Devolução registrada de " + pessoa + " para a ferramenta " + ferramenta + ", quantidade: " + qtd);
+}
+
+function adicionarFerramenta() { let nome = document.getElementById("almoxNome").value; let qtd = parseInt(document.getElementById("almoxQtd").value) || 0; let cat = document.getElementById("almoxCat").value; if (!nome || qtd <= 0) { alert("Preencha todos os campos corretamente!"); return; } let existente = ferramentas.find(f => f.nome.toLowerCase() === nome.toLowerCase()); if (existente) { existente.qtd += qtd; existente.cat = cat; } else { ferramentas.push({ nome, qtd, cat }); } mostrarTudo(); }
+
+function mostrarTudo() { atualizarTabela(ferramentas); }
+function filtrar() { let qtd = parseInt(document.getElementById("filtroQtd").value); let cat = document.getElementById("filtroCat").value; atualizarTabela(ferramentas.filter(f => (isNaN(qtd) || f.qtd >= qtd) && (cat === "todas" || f.cat === cat))); }
+function ordenarAZ() { ferramentas.sort((a,b)=>a.nome.localeCompare(b.nome)); mostrarTudo(); }
+function filtrarBaixa() { atualizarTabela(ferramentas.filter(f => f.qtd <= 2)); }
+
+function atualizarTabela(lista) { let tabela = document.getElementById("tabelaAlmox"); tabela.innerHTML = ""; lista.forEach(f => tabela.innerHTML += `<tr><td>${f.nome}</td><td>${f.qtd}</td><td>${f.cat}</td></tr>`); }
+function atualizarRegistros() { let tabela = document.getElementById("tabelaRegistros"); tabela.innerHTML = ""; registros.forEach(r => { tabela.innerHTML += `<tr><td>${r.pessoa}</td><td>${r.ferramenta}</td><td>${r.qtd}</td><td>${r.data}</td><td><img src="${r.assinatura}" width="100"></td></tr>`; }); }
+</script>
+
+</body>
+</html>
