@@ -26,6 +26,8 @@
     th, td {
         padding:10px; border:1px solid #444; text-align:center;
     }
+
+    /* POP-UP */
     #popupFundo {
         display:none; position:fixed; top:0; left:0; width:100%; height:100%;
         background:rgba(0,0,0,0.8); justify-content:center; align-items:center;
@@ -36,6 +38,7 @@
     }
     #signaturePad {
         width:100%; height:250px; border:2px solid #ff6600; background:#fff;
+        touch-action:none;
     }
 </style>
 </head>
@@ -56,6 +59,8 @@
     <input id="nomePessoa">
     <label>Nome da Ferramenta</label>
     <input id="nomeFerramenta">
+    <label>Quantidade</label>
+    <input id="qtdEmp" type="number" min="1">
     <label>Data</label>
     <input id="dataEmp" type="date">
     <button class="action" onclick="abrirPopup()">Assinar Digitalmente</button>
@@ -68,6 +73,7 @@
         <canvas id="signaturePad"></canvas>
         <button class="action" onclick="limparAssinatura()">Limpar</button>
         <button class="action" onclick="confirmarAssinatura()">Confirmar Assinatura</button>
+        <button class="action" onclick="fecharPopup()">Fechar</button>
     </div>
 </div>
 
@@ -119,7 +125,7 @@
     <h2>Registros</h2>
     <table>
         <thead>
-            <tr><th>Pessoa</th><th>Ferramenta</th><th>Data</th><th>Assinatura</th></tr>
+            <tr><th>Pessoa</th><th>Ferramenta</th><th>Qtd</th><th>Data</th><th>Assinatura</th></tr>
         </thead>
         <tbody id="tabelaRegistros"></tbody>
     </table>
@@ -131,11 +137,7 @@ let registros = [];
 let assinaturaOK = false;
 let assinaturaImg = "";
 
-function showPage(id) {
-    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
-    document.getElementById(id).style.display = 'block';
-}
-
+function showPage(id) { document.querySelectorAll('.page').forEach(p => p.style.display = 'none'); document.getElementById(id).style.display = 'block'; }
 function abrirPopup() { document.getElementById("popupFundo").style.display = "flex"; }
 function fecharPopup() { document.getElementById("popupFundo").style.display = "none"; }
 
@@ -143,102 +145,59 @@ let canvas = document.getElementById("signaturePad");
 let ctx = canvas.getContext("2d");
 let desenhando = false;
 
-canvas.addEventListener("mousedown", () => desenhando = true);
+function ajustarCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 2; ctx.lineCap = "round"; }
+ajustarCanvas();
+
+canvas.addEventListener("mousedown", (e) => { desenhando = true; desenhar(e); });
 canvas.addEventListener("mouseup", () => desenhando = false);
 canvas.addEventListener("mousemove", desenhar);
+canvas.addEventListener("touchstart", (e) => { desenhando = true; desenharTouch(e); });
+canvas.addEventListener("touchend", () => desenhando = false);
+canvas.addEventListener("touchmove", desenharTouch);
 
-function desenhar(e) {
-    if (!desenhando) return;
-    ctx.fillStyle = "black";
-    ctx.fillRect(e.offsetX, e.offsetY, 3, 3);
-}
+function desenhar(e) { if (!desenhando) return; ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); }
+function desenharTouch(e) { if (!desenhando) return; let rect = canvas.getBoundingClientRect(); let x = e.touches[0].clientX - rect.left; let y = e.touches[0].clientY - rect.top; ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y); }
 
-function limparAssinatura() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
-function confirmarAssinatura() {
-    assinaturaImg = canvas.toDataURL();
-    assinaturaOK = true;
-    fecharPopup();
-    alert("Assinatura salva!");
-}
+function limparAssinatura() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+function confirmarAssinatura() { assinaturaImg = canvas.toDataURL(); assinaturaOK = true; fecharPopup(); alert("Assinatura salva!"); }
 
 function salvarEmprestimo() {
     let pessoa = document.getElementById("nomePessoa").value;
     let ferramenta = document.getElementById("nomeFerramenta").value;
+    let qtd = parseInt(document.getElementById("qtdEmp").value) || 0;
     let data = document.getElementById("dataEmp").value;
-
-    if (!pessoa || !ferramenta || !data) {
-        alert("Preencha nome, ferramenta e data!");
-        return;
-    }
-
-    if (!assinaturaOK) {
-        alert("Você precisa assinar antes!");
-        return;
-    }
-
-    registros.push({ pessoa, ferramenta, data, assinatura: assinaturaImg });
+    if (!data) data = new Date().toISOString().split('T')[0];
+    if (!pessoa || !ferramenta || qtd <= 0) { alert("Preencha todos os campos!" ); return; }
+    if (!assinaturaOK) { alert("Você precisa assinar antes!"); return; }
+    let obj = ferramentas.find(f => f.nome.toLowerCase() === ferramenta.toLowerCase());
+    if (!obj) { alert("Ferramenta não está cadastrada no almoxarifado!"); return; }
+    if (obj.qtd < qtd) { alert("Quantidade insuficiente! Estoque atual: " + obj.qtd); return; }
+    obj.qtd -= qtd; atualizarTabela(ferramentas);
+    registros.push({ pessoa, ferramenta, qtd, data, assinatura: assinaturaImg });
     atualizarRegistros();
-
-    assinaturaOK = false;
+    limparAssinatura(); assinaturaOK = false;
     alert("Empréstimo salvo com sucesso!");
 }
 
-function registrarDevolucao() {
-    let pessoa = document.getElementById("devolucaoPessoa").value;
-    let nome = document.getElementById("devolucaoFerramenta").value;
-    alert("Devolução registrada: " + pessoa + " devolveu " + nome);
-}
+function registrarDevolucao() { let pessoa = document.getElementById("devolucaoPessoa").value; let ferramenta = document.getElementById("devolucaoFerramenta").value; alert("Devolução registrada de " + pessoa + " para a ferramenta " + ferramenta); }
 
 function adicionarFerramenta() {
     let nome = document.getElementById("almoxNome").value;
-    let qtd = parseInt(document.getElementById("almoxQtd").value);
+    let qtd = parseInt(document.getElementById("almoxQtd").value) || 0;
     let cat = document.getElementById("almoxCat").value;
-
-    ferramentas.push({ nome, qtd, cat });
+    if (!nome || qtd <= 0) { alert("Preencha todos os campos corretamente!"); return; }
+    let existente = ferramentas.find(f => f.nome.toLowerCase() === nome.toLowerCase());
+    if (existente) { existente.qtd += qtd; existente.cat = cat; } else { ferramentas.push({ nome, qtd, cat }); }
     mostrarTudo();
 }
 
 function mostrarTudo() { atualizarTabela(ferramentas); }
-function filtrar() {
-    let qtd = parseInt(document.getElementById("filtroQtd").value);
-    let cat = document.getElementById("filtroCat").value;
+function filtrar() { let qtd = parseInt(document.getElementById("filtroQtd").value); let cat = document.getElementById("filtroCat").value; atualizarTabela(ferramentas.filter(f => (isNaN(qtd) || f.qtd >= qtd) && (cat === "todas" || f.cat === cat))); }
+function ordenarAZ() { ferramentas.sort((a,b)=>a.nome.localeCompare(b.nome)); mostrarTudo(); }
+function filtrarBaixa() { atualizarTabela(ferramentas.filter(f => f.qtd <= 2)); }
 
-    atualizarTabela(
-        ferramentas.filter(f => (isNaN(qtd) || f.qtd >= qtd) && (cat === "todas" || f.cat === cat))
-    );
-}
-
-function ordenarAZ() {
-    ferramentas.sort((a,b)=>a.nome.localeCompare(b.nome));
-    mostrarTudo();
-}
-
-function filtrarBaixa() {
-    atualizarTabela(ferramentas.filter(f => f.qtd <= 2));
-}
-
-function atualizarTabela(lista) {
-    let tabela = document.getElementById("tabelaAlmox");
-    tabela.innerHTML = "";
-    lista.forEach(f => tabela.innerHTML += `<tr><td>${f.nome}</td><td>${f.qtd}</td><td>${f.cat}</td></tr>`);
-}
-
-function atualizarRegistros() {
-    let tabela = document.getElementById("tabelaRegistros");
-    tabela.innerHTML = "";
-    registros.forEach(r => {
-        tabela.innerHTML += `
-        <tr>
-            <td>${r.pessoa}</td>
-            <td>${r.ferramenta}</td>
-            <td>${r.data}</td>
-            <td><img src="${r.assinatura}" width="100"></td>
-        </tr>`;
-    });
-}
+function atualizarTabela(lista) { let tabela = document.getElementById("tabelaAlmox"); tabela.innerHTML = ""; lista.forEach(f => tabela.innerHTML += `<tr><td>${f.nome}</td><td>${f.qtd}</td><td>${f.cat}</td></tr>`); }
+function atualizarRegistros() { let tabela = document.getElementById("tabelaRegistros"); tabela.innerHTML = ""; registros.forEach(r => { tabela.innerHTML += `<tr><td>${r.pessoa}</td><td>${r.ferramenta}</td><td>${r.qtd}</td><td>${r.data}</td><td><img src="${r.assinatura}" width="100"></td></tr>`; }); }
 </script>
 
 </body>
