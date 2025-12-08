@@ -1,204 +1,552 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Sistema de Almoxarifado</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Sistema Empréstimo — Assinatura</title>
 <style>
-    body { font-family: Arial; background:#111; color:#fff; margin:0; }
-    header { background:#ff6600; padding:15px; text-align:center; font-size:24px; font-weight:bold; }
-    nav { display:flex; background:#222; }
-    nav button {
-        flex:1; padding:12px; background:#222; color:#fff;
-        border:1px solid #333; cursor:pointer; font-size:16px;
-    }
-    nav button:hover { background:#ff6600; }
-    .page { display:none; padding:20px; }
-    input, select {
-        padding:10px; width:100%; margin:8px 0;
-        background:#222; color:#fff; border:1px solid #555;
-    }
-    button.action {
-        padding:10px; background:#ff6600; color:#000;
-        border:none; font-size:16px; cursor:pointer; width:100%;
-        margin-top:10px;
-    }
-    table { width:100%; margin-top:20px; border-collapse:collapse; }
-    th, td {
-        padding:10px; border:1px solid #444; text-align:center;
-    }
-
-    /* POP-UP */
-    #popupFundo {
-        display:none; position:fixed; top:0; left:0; width:100%; height:100%;
-        background:rgba(0,0,0,0.8); justify-content:center; align-items:center;
-    }
-    #popup {
-        background:#fff; padding:20px; width:90%; max-width:500px;
-        border-radius:10px; color:#000;
-    }
-    #signaturePad {
-        width:100%; height:250px; border:2px solid #ff6600; background:#fff;
-        touch-action:none;
-    }
+  :root{
+    --primary:#ff9800;
+    --dark:#111;
+    --muted:#f2f2f2;
+    --card:#fff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:Inter,Arial,Helvetica,sans-serif;
+    background:var(--muted);
+    color:var(--dark);
+    -webkit-font-smoothing:antialiased;
+  }
+  header{
+    background:linear-gradient(90deg,var(--dark),#333);
+    color:var(--card);
+    padding:18px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .brand{display:flex;gap:12px;align-items:center}
+  .logo{
+    width:44px;height:44px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;font-size:18px;
+  }
+  h1{margin:0;font-size:18px}
+  nav{display:flex;gap:8px}
+  nav button{
+    background:transparent;color:var(--card);border:1px solid rgba(255,255,255,0.12);padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600
+  }
+  main{max-width:980px;margin:18px auto;padding:16px}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  label{display:block;font-weight:700;margin-top:8px}
+  input,select,textarea{padding:10px;border-radius:8px;border:1px solid #ddd;width:100%}
+  .two{flex:1 1 48%}
+  .one{flex:1 1 100%}
+  button.primary{background:var(--primary);border:none;color:#000;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700}
+  button.ghost{background:transparent;border:1px solid #ddd;color:var(--dark);padding:8px 12px;border-radius:8px;cursor:pointer}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
+  .small{font-size:13px;color:#666}
+  .status-box{display:flex;gap:8px}
+  .toggle{padding:10px;border-radius:8px;border:2px solid var(--dark);background:transparent;cursor:pointer;font-weight:700}
+  /* signature canvas */
+  #signaturePad{width:100%;height:320px;border-radius:10px;border:3px solid #000;background:#fff;touch-action:none}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .center{display:flex;justify-content:center;align-items:center}
+  /* responsive */
+  @media (max-width:720px){
+    .two{flex:1 1 100%}
+    header{padding:12px}
+    nav{gap:6px}
+    .logo{width:36px;height:36px}
+  }
 </style>
 </head>
 <body>
 
-<header>Sistema de Almoxarifado</header>
-
-<nav>
-    <button onclick="showPage('emprestimo')">Empréstimo</button>
-    <button onclick="showPage('devolucao')">Devolução</button>
-    <button onclick="showPage('almox')">Almoxarifado</button>
-    <button onclick="showPage('registros')">Registros</button>
-</nav>
-
-<div id="emprestimo" class="page" style="display:block;">
-    <h2>Empréstimo de Ferramenta</h2>
-    <label>Nome da Pessoa</label>
-    <input id="nomePessoa">
-    <label>Nome da Ferramenta</label>
-    <input id="nomeFerramenta">
-    <label>Quantidade</label>
-    <input id="qtdEmp" type="number" min="1">
-    <label>Data</label>
-    <input id="dataEmp" type="date">
-    <button class="action" onclick="abrirPopup()">Assinar Digitalmente</button>
-    <button class="action" onclick="salvarEmprestimo()">Salvar Empréstimo</button>
-</div>
-
-<div id="popupFundo">
-    <div id="popup">
-        <h3>Assinatura Digital</h3>
-        <canvas id="signaturePad"></canvas>
-        <button class="action" onclick="limparAssinatura()">Limpar</button>
-        <button class="action" onclick="confirmarAssinatura()">Confirmar Assinatura</button>
-        <button class="action" onclick="fecharPopup()">Fechar</button>
+<header>
+  <div class="brand">
+    <div class="logo">A</div>
+    <div>
+      <h1>Sistema Empréstimo</h1>
+      <div class="small">laranja & preto — mobile friendly</div>
     </div>
-</div>
+  </div>
 
-<div id="devolucao" class="page">
-    <h2>Devolução</h2>
-    <label>Nome da Pessoa</label>
-    <input id="devolucaoPessoa">
-    <label>Nome da Ferramenta</label>
-    <input id="devolucaoFerramenta">
-    <button class="action" onclick="registrarDevolucao()">Registrar Devolução</button>
-</div>
+  <nav>
+    <button onclick="showScreen('emprestimo')">Empréstimo</button>
+    <button onclick="showScreen('devolucao')">Devolução</button>
+    <button onclick="showScreen('assinatura')">Assinatura</button>
+    <button onclick="showScreen('estoque')">Estoque</button>
+  </nav>
+</header>
 
-<div id="almox" class="page">
-    <h2>Almoxarifado</h2>
-    <label>Nome da ferramenta</label>
-    <input id="almoxNome">
-    <label>Quantidade</label>
-    <input id="almoxQtd" type="number">
-    <label>Categoria</label>
-    <select id="almoxCat">
-        <option value="manual">Manual</option>
-        <option value="eletrica">Elétrica</option>
-        <option value="hidraulica">Hidráulica</option>
-    </select>
-    <button class="action" onclick="adicionarFerramenta()">Adicionar</button>
-    <h3>Filtros</h3>
-    <label>Quantidade mínima</label>
-    <input type="number" id="filtroQtd">
-    <label>Categoria</label>
-    <select id="filtroCat">
-        <option value="todas">Todas</option>
-        <option value="manual">Manual</option>
-        <option value="eletrica">Elétrica</option>
-        <option value="hidraulica">Hidráulica</option>
-    </select>
-    <button class="action" onclick="ordenarAZ()">Ordenar A–Z</button>
-    <button class="action" onclick="filtrar()">Aplicar Filtro</button>
-    <button class="action" onclick="mostrarTudo()">Mostrar Tudo</button>
-    <button class="action" onclick="filtrarBaixa()">Baixa Quantidade</button>
-    <table>
-        <thead>
-            <tr><th>Ferramenta</th><th>Qtd</th><th>Categoria</th></tr>
-        </thead>
-        <tbody id="tabelaAlmox"></tbody>
-    </table>
-</div>
+<main>
+  <!-- EMPRESTIMO -->
+  <section id="screen-emprestimo" class="card">
+    <h2>Registrar Empréstimo</h2>
+    <div class="row">
+      <div class="two">
+        <label>Nome da Pessoa</label>
+        <input id="emprestimo-nome" placeholder="Ex: João Silva">
+      </div>
+      <div class="two">
+        <label>Ferramenta</label>
+        <input id="emprestimo-ferramenta" placeholder="Ex: Furadeira">
+      </div>
+      <div class="two">
+        <label>Quantidade</label>
+        <input id="emprestimo-quantidade" type="number" min="1" value="1">
+      </div>
+      <div class="two">
+        <label>Data</label>
+        <input id="emprestimo-data" type="date">
+      </div>
+    </div>
 
-<div id="registros" class="page">
-    <h2>Registros</h2>
-    <table>
-        <thead>
-            <tr><th>Pessoa</th><th>Ferramenta</th><th>Qtd</th><th>Data</th><th>Assinatura</th></tr>
-        </thead>
-        <tbody id="tabelaRegistros"></tbody>
-    </table>
-</div>
+    <div style="margin-top:12px" class="row">
+      <div class="one">
+        <label>Observações</label>
+        <textarea id="emprestimo-observacao" rows="2" placeholder="Opcional"></textarea>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <div class="one center">
+        <button class="primary" onclick="incluirAssinaturaAntes('emprestimo')">Capturar Assinatura & Registrar Empréstimo</button>
+      </div>
+    </div>
+
+    <div id="emprestimo-list" style="margin-top:16px"></div>
+  </section>
+
+  <!-- DEVOLUCAO -->
+  <section id="screen-devolucao" class="card" style="display:none">
+    <h2>Registrar Devolução</h2>
+    <div class="row">
+      <div class="two">
+        <label>Nome da Pessoa</label>
+        <input id="devolucao-nome" placeholder="Ex: João Silva">
+      </div>
+      <div class="two">
+        <label>Ferramenta</label>
+        <input id="devolucao-ferramenta" placeholder="Ex: Furadeira">
+      </div>
+      <div class="two">
+        <label>Quantidade</label>
+        <input id="devolucao-quantidade" type="number" min="1" value="1">
+      </div>
+      <div class="two">
+        <label>Data</label>
+        <input id="devolucao-data" type="date">
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="row">
+      <div class="one center">
+        <button class="primary" onclick="registrarDevolucao()">Registrar Devolução</button>
+      </div>
+    </div>
+
+    <div id="devolucao-list" style="margin-top:16px"></div>
+  </section>
+
+  <!-- ASSINATURA -->
+  <section id="screen-assinatura" class="card" style="display:none">
+    <h2>Assinatura Digital</h2>
+    <div class="small">Use touch ou mouse. Toque/arraste para assinar.</div>
+
+    <canvas id="signaturePad"></canvas>
+
+    <div class="controls">
+      <button class="ghost" onclick="limparAssinatura()">Limpar</button>
+      <button class="ghost" onclick="salvarAssinaturaLocal()">Salvar Imagem</button>
+      <button class="ghost" onclick="exportarAssinaturaPNG()">Download PNG</button>
+      <div style="flex:1"></div>
+      <div class="small">Última assinatura salva: <span id="assinatura-info">nenhuma</span></div>
+    </div>
+  </section>
+
+  <!-- ESTOQUE -->
+  <section id="screen-estoque" class="card" style="display:none">
+    <h2>Controle de Estoque</h2>
+    <div class="row">
+      <div class="two">
+        <label>Adicionar/Atualizar item</label>
+        <input id="estoque-nome" placeholder="Nome da ferramenta">
+        <label style="margin-top:8px">Quantidade</label>
+        <input id="estoque-quant" type="number" min="0" value="0">
+        <div style="margin-top:8px">
+          <button class="primary" onclick="atualizarEstoque()">Salvar item</button>
+          <button class="ghost" onclick="limparEstoqueForm()">Limpar</button>
+        </div>
+      </div>
+
+      <div class="two">
+        <label>Lista de estoque</label>
+        <div id="lista-estoque" style="max-height:320px;overflow:auto"></div>
+      </div>
+    </div>
+  </section>
+</main>
 
 <script>
-let ferramentas = [];
-let registros = [];
-let assinaturaOK = false;
-let assinaturaImg = "";
+/* ------------------------
+   UTIL: persistência
+   ------------------------ */
+const LS_KEYS = {
+  estoque: 'sist_estoque_v1',
+  registros: 'sist_registros_v1',
+  ultimaAssinatura: 'sist_ultima_assin_v1'
+};
 
-function showPage(id) { document.querySelectorAll('.page').forEach(p => p.style.display = 'none'); document.getElementById(id).style.display = 'block'; }
-function abrirPopup() { document.getElementById("popupFundo").style.display = "flex"; }
-function fecharPopup() { document.getElementById("popupFundo").style.display = "none"; }
-
-let canvas = document.getElementById("signaturePad");
-let ctx = canvas.getContext("2d");
-let desenhando = false;
-
-function ajustarCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 2; ctx.lineCap = "round"; }
-ajustarCanvas();
-
-canvas.addEventListener("mousedown", (e) => { desenhando = true; desenhar(e); });
-canvas.addEventListener("mouseup", () => desenhando = false);
-canvas.addEventListener("mousemove", desenhar);
-canvas.addEventListener("touchstart", (e) => { desenhando = true; desenharTouch(e); });
-canvas.addEventListener("touchend", () => desenhando = false);
-canvas.addEventListener("touchmove", desenharTouch);
-
-function desenhar(e) { if (!desenhando) return; ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); }
-function desenharTouch(e) { if (!desenhando) return; let rect = canvas.getBoundingClientRect(); let x = e.touches[0].clientX - rect.left; let y = e.touches[0].clientY - rect.top; ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y); }
-
-function limparAssinatura() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
-function confirmarAssinatura() { assinaturaImg = canvas.toDataURL(); assinaturaOK = true; fecharPopup(); alert("Assinatura salva!"); }
-
-function salvarEmprestimo() {
-    let pessoa = document.getElementById("nomePessoa").value;
-    let ferramenta = document.getElementById("nomeFerramenta").value;
-    let qtd = parseInt(document.getElementById("qtdEmp").value) || 0;
-    let data = document.getElementById("dataEmp").value;
-    if (!data) data = new Date().toISOString().split('T')[0];
-    if (!pessoa || !ferramenta || qtd <= 0) { alert("Preencha todos os campos!" ); return; }
-    if (!assinaturaOK) { alert("Você precisa assinar antes!"); return; }
-    let obj = ferramentas.find(f => f.nome.toLowerCase() === ferramenta.toLowerCase());
-    if (!obj) { alert("Ferramenta não está cadastrada no almoxarifado!"); return; }
-    if (obj.qtd < qtd) { alert("Quantidade insuficiente! Estoque atual: " + obj.qtd); return; }
-    obj.qtd -= qtd; atualizarTabela(ferramentas);
-    registros.push({ pessoa, ferramenta, qtd, data, assinatura: assinaturaImg });
-    atualizarRegistros();
-    limparAssinatura(); assinaturaOK = false;
-    alert("Empréstimo salvo com sucesso!");
+function loadJSON(key, fallback){
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch(e){ return fallback; }
+}
+function saveJSON(key, obj){
+  localStorage.setItem(key, JSON.stringify(obj));
 }
 
-function registrarDevolucao() { let pessoa = document.getElementById("devolucaoPessoa").value; let ferramenta = document.getElementById("devolucaoFerramenta").value; alert("Devolução registrada de " + pessoa + " para a ferramenta " + ferramenta); }
+/* ------------------------
+   ESTOQUE (map nome->quant)
+   ------------------------ */
+let estoque = loadJSON(LS_KEYS.estoque, {
+  "Furadeira": 3,
+  "Parafusadeira": 5,
+  "Martelo": 10
+});
+let registros = loadJSON(LS_KEYS.registros, []);
 
-function adicionarFerramenta() {
-    let nome = document.getElementById("almoxNome").value;
-    let qtd = parseInt(document.getElementById("almoxQtd").value) || 0;
-    let cat = document.getElementById("almoxCat").value;
-    if (!nome || qtd <= 0) { alert("Preencha todos os campos corretamente!"); return; }
-    let existente = ferramentas.find(f => f.nome.toLowerCase() === nome.toLowerCase());
-    if (existente) { existente.qtd += qtd; existente.cat = cat; } else { ferramentas.push({ nome, qtd, cat }); }
-    mostrarTudo();
+/* ------------------------
+   Navegação de telas
+   ------------------------ */
+function showScreen(name){
+  document.querySelectorAll('main section').forEach(s => s.style.display='none');
+  const el = document.getElementById('screen-'+name);
+  if(!el) return;
+  el.style.display='block';
+
+  // se for assinatura, reajusta o canvas para ficar nítido
+  if(name === 'assinatura') {
+    setTimeout(()=> ajustarCanvas(true), 80);
+  }
+  renderAll();
+}
+showScreen('emprestimo');
+
+/* ------------------------
+   RENDERs
+   ------------------------ */
+function renderEstoque(){
+  const container = document.getElementById('lista-estoque');
+  if(!container) return;
+  let html = '<table><thead><tr><th>Ferramenta</th><th>Quantidade</th><th></th></tr></thead><tbody>';
+  Object.keys(estoque).sort().forEach(k=>{
+    html += `<tr><td>${k}</td><td>${estoque[k]}</td><td><button class="ghost" onclick="removerItemEstoque('${escapeHtml(k)}')">Remover</button></td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+function renderRegistros(){
+  const el = document.getElementById('emprestimo-list');
+  const elD = document.getElementById('devolucao-list');
+  if(el) {
+    let html = '<h3>Últimos empréstimos</h3>';
+    const ultimos = registros.filter(r=>r.tipo==='emprestimo').slice().reverse().slice(0,6);
+    if(!ultimos.length) html += '<div class="small">Nenhum</div>';
+    else {
+      html += '<table><thead><tr><th>Nome</th><th>Ferramenta</th><th>Qtd</th><th>Data</th><th>Assinatura</th></tr></thead><tbody>';
+      ultimos.forEach(r=>{
+        html += `<tr><td>${escapeHtml(r.nome)}</td><td>${escapeHtml(r.ferramenta)}</td><td>${r.quant}</td><td>${r.data}</td><td>${r.assinatura ? '✓' : ''}</td></tr>`;
+      });
+      html += '</tbody></table>';
+    }
+    el.innerHTML = html;
+  }
+  if(elD){
+    let html = '<h3>Últimas devoluções</h3>';
+    const ultimos = registros.filter(r=>r.tipo==='devolucao').slice().reverse().slice(0,6);
+    if(!ultimos.length) html += '<div class="small">Nenhum</div>';
+    else {
+      html += '<table><thead><tr><th>Nome</th><th>Ferramenta</th><th>Qtd</th><th>Data</th></tr></thead><tbody>';
+      ultimos.forEach(r=>{
+        html += `<tr><td>${escapeHtml(r.nome)}</td><td>${escapeHtml(r.ferramenta)}</td><td>${r.quant}</td><td>${r.data}</td></tr>`;
+      });
+      html += '</tbody></table>';
+    }
+    elD.innerHTML = html;
+  }
+}
+function renderAll(){
+  renderEstoque();
+  renderRegistros();
+  const info = localStorage.getItem(LS_KEYS.ultimaAssinatura);
+  document.getElementById('assinatura-info').innerText = info ? 'salva' : 'nenhuma';
 }
 
-function mostrarTudo() { atualizarTabela(ferramentas); }
-function filtrar() { let qtd = parseInt(document.getElementById("filtroQtd").value); let cat = document.getElementById("filtroCat").value; atualizarTabela(ferramentas.filter(f => (isNaN(qtd) || f.qtd >= qtd) && (cat === "todas" || f.cat === cat))); }
-function ordenarAZ() { ferramentas.sort((a,b)=>a.nome.localeCompare(b.nome)); mostrarTudo(); }
-function filtrarBaixa() { atualizarTabela(ferramentas.filter(f => f.qtd <= 2)); }
+/* ------------------------
+   Funções de Empréstimo / Devolução
+   ------------------------ */
+function incluirAssinaturaAntes(context){
+  // abre a tela assinatura para capturar e, após salvar, registra o empréstimo
+  // guardamos um callback simples
+  pendingCallbackAfterAssinatura = () => registrarEmprestimo();
+  showScreen('assinatura');
+  alert('Assine na tela que abriu e clique em "Salvar Imagem". Ao salvar, o empréstimo será registrado automaticamente.');
+}
 
-function atualizarTabela(lista) { let tabela = document.getElementById("tabelaAlmox"); tabela.innerHTML = ""; lista.forEach(f => tabela.innerHTML += `<tr><td>${f.nome}</td><td>${f.qtd}</td><td>${f.cat}</td></tr>`); }
-function atualizarRegistros() { let tabela = document.getElementById("tabelaRegistros"); tabela.innerHTML = ""; registros.forEach(r => { tabela.innerHTML += `<tr><td>${r.pessoa}</td><td>${r.ferramenta}</td><td>${r.qtd}</td><td>${r.data}</td><td><img src="${r.assinatura}" width="100"></td></tr>`; }); }
+function registrarEmprestimo(){
+  const nome = document.getElementById('emprestimo-nome').value.trim();
+  const ferramenta = document.getElementById('emprestimo-ferramenta').value.trim();
+  const quant = Number(document.getElementById('emprestimo-quantidade').value) || 1;
+  const data = document.getElementById('emprestimo-data').value || hoje();
+  if(!nome || !ferramenta){ return alert('Preencha nome e ferramenta.'); }
+
+  // atualizar estoque
+  if(!estoque[ferramenta]) estoque[ferramenta] = 0;
+  estoque[ferramenta] = Math.max(0, estoque[ferramenta] - quant);
+
+  const assin = localStorage.getItem(LS_KEYS.ultimaAssinatura) || null;
+
+  const registro = { tipo:'emprestimo', nome, ferramenta, quant, data, observacao: document.getElementById('emprestimo-observacao').value || '', assinatura: assin, createdAt: new Date().toISOString() };
+  registros.push(registro);
+  saveJSON(LS_KEYS.registros, registros);
+  saveJSON(LS_KEYS.estoque, estoque);
+  alert('Empréstimo registrado!');
+  limparFormEmprestimo();
+  showScreen('emprestimo');
+}
+
+function registrarDevolucao(){
+  const nome = document.getElementById('devolucao-nome').value.trim();
+  const ferramenta = document.getElementById('devolucao-ferramenta').value.trim();
+  const quant = Number(document.getElementById('devolucao-quantidade').value) || 1;
+  const data = document.getElementById('devolucao-data').value || hoje();
+  if(!nome || !ferramenta){ return alert('Preencha nome e ferramenta.'); }
+
+  if(!estoque[ferramenta]) estoque[ferramenta] = 0;
+  estoque[ferramenta] = estoque[ferramenta] + quant;
+
+  const registro = { tipo:'devolucao', nome, ferramenta, quant, data, createdAt: new Date().toISOString() };
+  registros.push(registro);
+  saveJSON(LS_KEYS.registros, registros);
+  saveJSON(LS_KEYS.estoque, estoque);
+  alert('Devolução registrada!');
+  limparFormDevolucao();
+  renderAll();
+}
+
+/* ------------------------
+   Estoque: editar / remover
+   ------------------------ */
+function atualizarEstoque(){
+  const nome = document.getElementById('estoque-nome').value.trim();
+  const quant = Number(document.getElementById('estoque-quant').value) || 0;
+  if(!nome) return alert('Preencha o nome da ferramenta.');
+  estoque[nome] = quant;
+  saveJSON(LS_KEYS.estoque, estoque);
+  limparEstoqueForm();
+  renderAll();
+}
+function removerItemEstoque(nome){
+  if(!confirm('Remover '+nome+' do estoque?')) return;
+  delete estoque[nome];
+  saveJSON(LS_KEYS.estoque, estoque);
+  renderAll();
+}
+function limparEstoqueForm(){
+  document.getElementById('estoque-nome').value = '';
+  document.getElementById('estoque-quant').value = 0;
+}
+
+/* ------------------------
+   Formularios: limpar
+   ------------------------ */
+function limparFormEmprestimo(){
+  document.getElementById('emprestimo-nome').value='';
+  document.getElementById('emprestimo-ferramenta').value='';
+  document.getElementById('emprestimo-quantidade').value=1;
+  document.getElementById('emprestimo-data').value = hoje();
+  document.getElementById('emprestimo-observacao').value='';
+}
+function limparFormDevolucao(){
+  document.getElementById('devolucao-nome').value='';
+  document.getElementById('devolucao-ferramenta').value='';
+  document.getElementById('devolucao-quantidade').value=1;
+  document.getElementById('devolucao-data').value = hoje();
+}
+
+/* ------------------------
+   UTIL: data atual (YYYY-MM-DD)
+   ------------------------ */
+function hoje(){ return new Date().toISOString().substr(0,10); }
+document.querySelectorAll('input[type="date"]').forEach(i=>i.value = hoje());
+
+/* ------------------------
+   ASSINATURA: Canvas robusto (touch + mouse)
+   - preserva escala quando redimensiona (usa dataURL)
+   ------------------------ */
+const canvas = document.getElementById('signaturePad');
+const ctx = canvas.getContext('2d');
+let drawing=false, lastX=0, lastY=0;
+let pendingCallbackAfterAssinatura = null;
+
+function ajustarCanvas(hiDPI = true){
+  // preserve current drawing
+  const data = canvas.toDataURL();
+  const w = canvas.offsetWidth;
+  const h = canvas.offsetHeight;
+  const ratio = hiDPI && window.devicePixelRatio ? window.devicePixelRatio : 1;
+  canvas.width = Math.round(w * ratio);
+  canvas.height = Math.round(h * ratio);
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.scale(ratio, ratio);
+
+  ctx.lineWidth = Math.max(2, (w/300)*2);
+  ctx.strokeStyle = '#000';
+  ctx.lineCap = 'round';
+
+  // restore drawing
+  const img = new Image();
+  img.onload = function(){ ctx.drawImage(img, 0, 0, w, h); };
+  img.src = data;
+}
+window.addEventListener('load', ()=> ajustarCanvas());
+window.addEventListener('resize', ()=> ajustarCanvas());
+
+/* Mouse events */
+canvas.addEventListener('mousedown',(e)=>{
+  drawing=true;
+  const r = canvas.getBoundingClientRect();
+  lastX = e.clientX - r.left;
+  lastY = e.clientY - r.top;
+});
+canvas.addEventListener('mouseup',()=>drawing=false);
+canvas.addEventListener('mouseout',()=>drawing=false);
+canvas.addEventListener('mousemove',(e)=>{
+  if(!drawing) return;
+  const r = canvas.getBoundingClientRect();
+  const x = e.clientX - r.left;
+  const y = e.clientY - r.top;
+  ctx.beginPath();
+  ctx.moveTo(lastX,lastY);
+  ctx.lineTo(x,y);
+  ctx.stroke();
+  lastX = x; lastY = y;
+});
+
+/* Touch events */
+canvas.addEventListener('touchstart',(e)=>{
+  e.preventDefault();
+  drawing=true;
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches[0];
+  lastX = t.clientX - r.left;
+  lastY = t.clientY - r.top;
+},{passive:false});
+canvas.addEventListener('touchend',(e)=>{
+  drawing=false;
+  // if there is a pending callback (registered before opening assinatura), run it when user finishes & saved
+});
+canvas.addEventListener('touchmove',(e)=>{
+  e.preventDefault();
+  if(!drawing) return;
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches[0];
+  const x = t.clientX - r.left;
+  const y = t.clientY - r.top;
+  ctx.beginPath();
+  ctx.moveTo(lastX,lastY);
+  ctx.lineTo(x,y);
+  ctx.stroke();
+  lastX = x; lastY = y;
+},{passive:false});
+
+/* limpar */
+function limparAssinatura(){
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // mark ultima assin as removed
+  localStorage.removeItem(LS_KEYS.ultimaAssinatura);
+  renderAll();
+}
+
+/* salvar imagem (salva em localStorage como dataURL) */
+function salvarAssinaturaLocal(){
+  // export scaled image at displayed size
+  const w = canvas.offsetWidth;
+  const h = canvas.offsetHeight;
+  // create temporary canvas to export at display size
+  const tmp = document.createElement('canvas');
+  tmp.width = w; tmp.height = h;
+  const tctx = tmp.getContext('2d');
+  // draw current canvas scaled to display size
+  tctx.drawImage(canvas, 0, 0, w, h);
+  const dataURL = tmp.toDataURL('image/png');
+  localStorage.setItem(LS_KEYS.ultimaAssinatura, dataURL);
+  document.getElementById('assinatura-info').innerText = 'salva';
+  alert('Assinatura salva localmente!');
+  // if pending callback exists, run it now to continue flow (ex: registrar emprestimo)
+  if(typeof pendingCallbackAfterAssinatura === 'function'){
+    const cb = pendingCallbackAfterAssinatura;
+    pendingCallbackAfterAssinatura = null;
+    // small delay so user sees alert before flow continues
+    setTimeout(()=>{ cb(); }, 150);
+  }
+}
+
+/* export PNG (download) */
+function exportarAssinaturaPNG(){
+  const w = canvas.offsetWidth;
+  const h = canvas.offsetHeight;
+  const tmp = document.createElement('canvas');
+  tmp.width = w; tmp.height = h;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(canvas,0,0,w,h);
+  const url = tmp.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'assinatura.png';
+  a.click();
+}
+
+/* utility to attach assinatura when registering emprestimo (if user already had saved one, fine) */
+function salvarAssinaturaParaRegistro(){
+  return localStorage.getItem(LS_KEYS.ultimaAssinatura) || null;
+}
+
+/* save a copy of canvas as base64 and also trigger any pending callback used earlier */
+function exportarAssinaturaComoBase64(){
+  salvarAssinaturaLocal();
+  return localStorage.getItem(LS_KEYS.ultimaAssinatura);
+}
+
+/* ------------------------
+   Pequenas utilidades
+   ------------------------ */
+function escapeHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* simulate click behavior for removing item names in table (unescape) */
+function removerItemEstoque(nameEscaped){
+  // nameEscaped is escaped; unescape
+  const name = nameEscaped.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+  if(!confirm('Remover '+name+' do estoque?')) return;
+  delete estoque[name];
+  saveJSON(LS_KEYS.estoque, estoque);
+  renderAll();
+}
+
+/* ------------------------
+   Inicialização
+   ------------------------ */
+renderAll();
 </script>
-
 </body>
 </html>
