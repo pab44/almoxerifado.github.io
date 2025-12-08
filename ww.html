@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Sistema Empréstimo — Assinatura</title>
+<style>
+  :root{--primary:#ff9800;--dark:#111;--muted:#f2f2f2;--card:#fff;}
+  *{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--muted);color:var(--dark);-webkit-font-smoothing:antialiased;}
+  header{background:linear-gradient(90deg,var(--dark),#333);color:var(--card);padding:18px 20px;display:flex;align-items:center;justify-content:space-between;}
+  .brand{display:flex;gap:12px;align-items:center}.logo{width:44px;height:44px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;font-size:18px;}
+  h1{margin:0;font-size:18px}nav{display:flex;gap:8px}nav button{background:transparent;color:var(--card);border:1px solid rgba(255,255,255,0.12);padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+  main{max-width:980px;margin:18px auto;padding:16px}.card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+  .row{display:flex;gap:12px;flex-wrap:wrap}label{display:block;font-weight:700;margin-top:8px}input,select,textarea{padding:10px;border-radius:8px;border:1px solid #ddd;width:100%}
+  .two{flex:1 1 48%}.one{flex:1 1 100%}button.primary{background:var(--primary);border:none;color:#000;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700}
+  button.ghost{background:transparent;border:1px solid #ddd;color:var(--dark);padding:8px 12px;border-radius:8px;cursor:pointer}table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}.small{font-size:13px;color:#666}.center{display:flex;justify-content:center;align-items:center}
+  #signaturePad{width:100%;height:320px;border-radius:10px;border:3px solid #000;background:#fff;touch-action:none}.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  @media (max-width:720px){.two{flex:1 1 100%}header{padding:12px}nav{gap:6px}.logo{width:36px;height:36px}}
+  
+  /* FULLSCREEN ASSINATURA */
+  .fullscreen-signature{position:fixed;top:0;left:0;width:100vw;height:100vh;background:#fff;z-index:9999;display:flex;flex-direction:column}
+  .fullscreen-signature .canvas-container{flex:1;display:flex;justify-content:center;align-items:center;padding:20px}
+  .fullscreen-signature canvas{width:100%;max-width:800px;height:100%;max-height:600px;border:4px solid #000;border-radius:12px;background:#fff;touch-action:none}
+  .fullscreen-signature .controls{position:sticky;bottom:0;background:linear-gradient(transparent,#fff);padding:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;border-top:1px solid #eee}
+  .fullscreen-signature button{min-width:120px;padding:12px 16px;font-weight:700;border-radius:10px}
+  .fullscreen-back{position:absolute;top:20px;left:20px;z-index:10;background:var(--primary);color:#000;border:none;padding:12px 16px;border-radius:10px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">A</div><div><h1>Sistema Empréstimo</h1><div class="small">laranja & preto — mobile friendly</div></div></div><nav><button onclick="showScreen('emprestimo')">Empréstimo</button><button onclick="showScreen('devolucao')">Devolução</button><button onclick="showScreen('assinatura')">Assinatura</button><button onclick="showScreen('estoque')">Estoque</button></nav></header>
+<main>
+  <section id="screen-emprestimo" class="card"><h2>Registrar Empréstimo</h2><div class="row"><div class="two"><label>Nome da Pessoa</label><input id="emprestimo-nome" placeholder="Ex: João Silva"></div><div class="two"><label>Ferramenta</label><input id="emprestimo-ferramenta" placeholder="Ex: Furadeira"></div><div class="two"><label>Quantidade</label><input id="emprestimo-quantidade" type="number" min="1" value="1"></div><div class="two"><label>Data</label><input id="emprestimo-data" type="date"></div></div><div style="margin-top:12px" class="row"><div class="one"><label>Observações</label><textarea id="emprestimo-observacao" rows="2" placeholder="Opcional"></textarea></div></div><div class="row" style="margin-top:12px"><div class="one center"><button class="primary" onclick="incluirAssinaturaAntes('emprestimo')">🔐 Capturar Assinatura & Registrar</button></div></div><div id="emprestimo-list" style="margin-top:16px"></div></section>
+
+  <section id="screen-devolucao" class="card" style="display:none"><h2>Registrar Devolução</h2><div class="row"><div class="two"><label>Nome da Pessoa</label><input id="devolucao-nome" placeholder="Ex: João Silva"></div><div class="two"><label>Ferramenta</label><input id="devolucao-ferramenta" placeholder="Ex: Furadeira"></div><div class="two"><label>Quantidade</label><input id="devolucao-quantidade" type="number" min="1" value="1"></div><div class="two"><label>Data</label><input id="devolucao-data" type="date"></div></div><div style="margin-top:12px" class="row"><div class="one center"><button class="primary" onclick="registrarDevolucao()">Registrar Devolução</button></div></div><div id="devolucao-list" style="margin-top:16px"></div></section>
+
+  <section id="screen-assinatura" class="card" style="display:none"><h2>Assinatura Digital</h2><div class="small">Use touch ou mouse. Toque/arraste para assinar.</div><canvas id="signaturePad"></canvas><div class="controls"><button class="ghost" onclick="limparAssinatura()">Limpar</button><button class="ghost" onclick="abrirAssinaturaFull()">📱 Tela Cheia</button><button class="ghost" onclick="salvarAssinaturaLocal()">Salvar</button><button class="ghost" onclick="exportarAssinaturaPNG()">Download PNG</button><div style="flex:1"></div><div class="small">Última: <span id="assinatura-info">nenhuma</span></div></div></section>
+
+  <section id="screen-estoque" class="card" style="display:none"><h2>Controle de Estoque</h2><div class="row"><div class="two"><label>Adicionar/Atualizar</label><input id="estoque-nome" placeholder="Nome da ferramenta"><label style="margin-top:8px">Quantidade</label><input id="estoque-quant" type="number" min="0" value="0"><div style="margin-top:8px"><button class="primary" onclick="atualizarEstoque()">Salvar</button><button class="ghost" onclick="limparEstoqueForm()">Limpar</button></div></div><div class="two"><label>Lista</label><div id="lista-estoque" style="max-height:320px;overflow:auto"></div></div></div></section>
+</main>
+
+<!-- FULLSCREEN ASSINATURA MODAL -->
+<div id="fullscreen-signature" class="fullscreen-signature" style="display:none">
+  <button class="fullscreen-back" onclick="fecharAssinaturaFull()">← Voltar</button>
+  <div class="canvas-container">
+    <canvas id="signaturePad-full"></canvas>
+  </div>
+  <div class="controls">
+    <button class="ghost" onclick="limparAssinaturaFull()">Limpar</button>
+    <button class="primary" onclick="salvarAssinaturaFull()">✅ Salvar Assinatura</button>
+    <button class="ghost" onclick="exportarAssinaturaFull()">Download PNG</button>
+  </div>
+</div>
+
+<script>
+const LS_KEYS = {estoque: 'sist_estoque_v1', registros: 'sist_registros_v1', ultimaAssinatura: 'sist_ultima_assin_v1'};
+function loadJSON(key, fallback){try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):fallback}catch(e){return fallback;}}function saveJSON(key,obj){localStorage.setItem(key,JSON.stringify(obj));}
+let estoque=loadJSON(LS_KEYS.estoque,{"Furadeira":3,"Parafusadeira":5,"Martelo":10});let registros=loadJSON(LS_KEYS.registros,[]);let pendingCallbackAfterAssinatura=null;
+
+function showScreen(name){document.querySelectorAll('main section').forEach(s=>s.style.display='none');const el=document.getElementById('screen-'+name);if(!el)return;el.style.display='block';if(name==='assinatura')setTimeout(()=>ajustarCanvas(true),80);renderAll();}showScreen('emprestimo');
+
+function renderEstoque(){const container=document.getElementById('lista-estoque');if(!container)return;let html='<table><thead><tr><th>Ferramenta</th><th>Quantidade</th><th></th></tr></thead><tbody>';Object.keys(estoque).sort().forEach(k=>{html+=`<tr><td>${escapeHtml(k)}</td><td>${estoque[k]}</td><td><button class="ghost" onclick="removerItemEstoque('${escapeHtml(k)}')">Remover</button></td></tr>`;});html+='</tbody></table>';container.innerHTML=html;}
+function renderRegistros(){const el=document.getElementById('emprestimo-list'),elD=document.getElementById('devolucao-list');if(el){let html='<h3>Últimos empréstimos</h3>';const ultimos=registros.filter(r=>r.tipo==='emprestimo').slice().reverse().slice(0,6);if(!ultimos.length)html+='<div class="small">Nenhum</div>';else{html+='<table><thead><tr><th>Nome</th><th>Ferramenta</th><th>Qtd</th><th>Data</th><th>Assinatura</th></tr></thead><tbody>';ultimos.forEach(r=>{html+=`<tr><td>${escapeHtml(r.nome)}</td><td>${escapeHtml(r.ferramenta)}</td><td>${r.quant}</td><td>${r.data}</td><td>${r.assinatura?'✓':''}</td></tr>`;});html+='</tbody></table>';}el.innerHTML=html;}if(elD){let html='<h3>Últimas devoluções</h3>';const ultimos=registros.filter(r=>r.tipo==='devolucao').slice().reverse().slice(0,6);if(!ultimos.length)html+='<div class="small">Nenhum</div>';else{html+='<table><thead><tr><th>Nome</th><th>Ferramenta</th><th>Qtd</th><th>Data</th></tr></thead><tbody>';ultimos.forEach(r=>{html+=`<tr><td>${escapeHtml(r.nome)}</td><td>${escapeHtml(r.ferramenta)}</td><td>${r.quant}</td><td>${r.data}</td></tr>`;});html+='</tbody></table>';}elD.innerHTML=html;}}
+function renderAll(){renderEstoque();renderRegistros();const info=localStorage.getItem(LS_KEYS.ultimaAssinatura);document.getElementById('assinatura-info').innerText=info?'salva':'nenhuma';}
+
+function incluirAssinaturaAntes(context){pendingCallbackAfterAssinatura=()=>registrarEmprestimo();abrirAssinaturaFull();alert('Assine na tela cheia e clique "Salvar Assinatura". O empréstimo será registrado automaticamente.');}
+function registrarEmprestimo(){const nome=document.getElementById('emprestimo-nome').value.trim(),ferramenta=document.getElementById('emprestimo-ferramenta').value.trim(),quant=Number(document.getElementById('emprestimo-quantidade').value)||1,data=document.getElementById('emprestimo-data').value||hoje();if(!nome||!ferramenta)return alert('Preencha nome e ferramenta.');if(!estoque[ferramenta])estoque[ferramenta]=0;estoque[ferramenta]=Math.max(0,estoque[ferramenta]-quant);const assin=localStorage.getItem(LS_KEYS.ultimaAssinatura)||null;const registro={tipo:'emprestimo',nome,ferramenta,quant,data,observacao:document.getElementById('emprestimo-observacao').value||'',assinatura:assin,createdAt:new Date().toISOString()};registros.push(registro);saveJSON(LS_KEYS.registros,registros);saveJSON(LS_KEYS.estoque,estoque);alert('✅ Empréstimo registrado!');limparFormEmprestimo();fecharAssinaturaFull();}
+function registrarDevolucao(){const nome=document.getElementById('devolucao-nome').value.trim(),ferramenta=document.getElementById('devolucao-ferramenta').value.trim(),quant=Number(document.getElementById('devolucao-quantidade').value)||1,data=document.getElementById('devolucao-data').value||hoje();if(!nome||!ferramenta)return alert('Preencha nome e ferramenta.');if(!estoque[ferramenta])estoque[ferramenta]=0;estoque[ferramenta]+=quant;const registro={tipo:'devolucao',nome,ferramenta,quant,data,createdAt:new Date().toISOString()};registros.push(registro);saveJSON(LS_KEYS.registros,registros);saveJSON(LS_KEYS.estoque,estoque);alert('✅ Devolução registrada!');limparFormDevolucao();renderAll();}
+function atualizarEstoque(){const nome=document.getElementById('estoque-nome').value.trim(),quant=Number(document.getElementById('estoque-quant').value)||0;if(!nome)return alert('Preencha o nome.');estoque[nome]=quant;saveJSON(LS_KEYS.estoque,estoque);limparEstoqueForm();renderAll();}
+function removerItemEstoque(nomeEscaped){const name=nomeEscaped.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');if(!confirm('Remover '+name+'?'))return;delete estoque[name];saveJSON(LS_KEYS.estoque,estoque);renderAll();}
+function limparEstoqueForm(){document.getElementById('estoque-nome').value='';document.getElementById('estoque-quant').value=0;}
+function limparFormEmprestimo(){document.getElementById('emprestimo-nome').value='';document.getElementById('emprestimo-ferramenta').value='';document.getElementById('emprestimo-quantidade').value=1;document.getElementById('emprestimo-data').value=hoje();document.getElementById('emprestimo-observacao').value='';}
+function limparFormDevolucao(){document.getElementById('devolucao-nome').value='';document.getElementById('devolucao-ferramenta').value='';document.getElementById('devolucao-quantidade').value=1;document.getElementById('devolucao-data').value=hoje();}
+function hoje(){return new Date().toISOString().substr(0,10);}document.querySelectorAll('input[type="date"]').forEach(i=>i.value=hoje());function escapeHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+let canvasNormal,ctxNormal,canvasFull,ctxFull,drawing=false,lastX=0,lastY=0;
+
+// CANVAS NORMAL
+canvasNormal=document.getElementById('signaturePad');ctxNormal=canvasNormal.getContext('2d');
+function ajustarCanvas(canvas,ctx,hiDPI=true){const data=canvas.toDataURL();const w=canvas.offsetWidth,h=canvas.offsetHeight;const ratio=hiDPI&&window.devicePixelRatio?window.devicePixelRatio:1;canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);canvas.style.width=w+'px';canvas.style.height=h+'px';ctx.setTransform(1,0,0,1,0,0);ctx.scale(ratio,ratio);ctx.lineWidth=2;ctx.strokeStyle='#000';ctx.lineCap='round';const img=new Image();img.onload=function(){ctx.drawImage(img,0,0,w,h);};img.src=data;}
+window.addEventListener('load',()=>ajustarCanvas(canvasNormal,ctxNormal));window.addEventListener('resize',()=>ajustarCanvas(canvasNormal,ctxNormal));
+
+// CANVAS FULLSCREEN
+canvasFull=document.getElementById('signaturePad-full');ctxFull=canvasFull.getContext('2d');
+function ajustarCanvasFull(){ajustarCanvas(canvasFull,ctxFull);}
+window.addEventListener('resize',ajustarCanvasFull);
+
+// EVENTOS DESENHO (NORMAL)
+function attachEvents(canvas,ctx){canvas.addEventListener('mousedown',e=>{drawing=true;const r=canvas.getBoundingClientRect();lastX=e.clientX-r.left;lastY=e.clientY-r.top;});canvas.addEventListener('mouseup',()=>drawing=false);canvas.addEventListener('mouseout',()=>drawing=false);canvas.addEventListener('mousemove',e=>{if(!drawing)return;const r=canvas.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(x,y);ctx.stroke();lastX=x;lastY=y;});canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const r=canvas.getBoundingClientRect();const t=e.touches[0];lastX=t.clientX-r.left;lastY=t.clientY-r.top;},{passive:false});canvas.addEventListener('touchend',()=>drawing=false,{passive:false});canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const r=canvas.getBoundingClientRect();const t=e.touches[0];const x=t.clientX-r.left,y=t.clientY-r.top;ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(x,y);ctx.stroke();lastX=x;lastY=y;},{passive:false});}
+attachEvents(canvasNormal,ctxNormal);attachEvents(canvasFull,ctxFull);
+
+function limparAssinatura(){ctxNormal.clearRect(0,0,canvasNormal.width,canvasNormal.height);localStorage.removeItem(LS_KEYS.ultimaAssinatura);renderAll();}
+function limparAssinaturaFull(){ctxFull.clearRect(0,0,canvasFull.width,canvasFull.height);}
+function salvarAssinaturaLocal(){const w=canvasNormal.offsetWidth,h=canvasNormal.offsetHeight;const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;const tctx=tmp.getContext('2d');tctx.drawImage(canvasNormal,0,0,w,h);const dataURL=tmp.toDataURL('image/png');localStorage.setItem(LS_KEYS.ultimaAssinatura,dataURL);document.getElementById('assinatura-info').innerText='salva';if(typeof pendingCallbackAfterAssinatura==='function'){const cb=pendingCallbackAfterAssinatura;pendingCallbackAfterAssinatura=null;setTimeout(()=>{cb();},150);}}
+function salvarAssinaturaFull(){const w=canvasFull.offsetWidth,h=canvasFull.offsetHeight;const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;const tctx=tmp.getContext('2d');tctx.drawImage(canvasFull,0,0,w,h);const dataURL=tmp.toDataURL('image/png');localStorage.setItem(LS_KEYS.ultimaAssinatura,dataURL);alert('✅ Assinatura salva!');fecharAssinaturaFull();}
+function exportarAssinaturaPNG(){const w=canvasNormal.offsetWidth,h=canvasNormal.offsetHeight;const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;const tctx=tmp.getContext('2d');tctx.drawImage(canvasNormal,0,0,w,h);const url=tmp.toDataURL('image/png');const a=document.createElement('a');a.href=url;a.download='assinatura.png';a.click();}
+function exportarAssinaturaFull(){const w=canvasFull.offsetWidth,h=canvasFull.offsetHeight;const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;const tctx=tmp.getContext('2d');tctx.drawImage(canvasFull,0,0,w,h);const url=tmp.toDataURL('image/png');const a=document.createElement('a');a.href=url;a.download='assinatura-full.png';a.click();}
+
+function abrirAssinaturaFull(){ajustarCanvasFull();document.getElementById('fullscreen-signature').style.display='flex';}
+function fecharAssinaturaFull(){document.getElementById('fullscreen-signature').style.display='none';}
+
+renderAll();
+</script>
+</body>
+</html>
